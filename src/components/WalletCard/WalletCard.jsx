@@ -222,9 +222,6 @@ export default function WalletCard() {
                       />
                     </svg>
                   </button>
-                  <span className={`wallet-card__copied${copied ? ' is-visible' : ''}`}>
-                    Copied
-                  </span>
                 </div>
               </div>
 

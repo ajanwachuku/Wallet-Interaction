@@ -203,25 +203,6 @@
     stroke-dashoffset 0.3s ease 0.06s;
 }
 
-.wallet-card__copied {
-  position: absolute;
-  left: calc(100% + 8px);
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
-  font-weight: 600;
-  color: #ffe9b0;
-  opacity: 0;
-  transform: translateY(2px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  pointer-events: none;
-  white-space: nowrap;
-}
-
-.wallet-card__copied.is-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
 .wallet-card__meta-row {
   display: flex;
   gap: 28px;
