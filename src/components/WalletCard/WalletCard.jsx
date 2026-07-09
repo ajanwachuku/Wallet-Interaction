@@ -6,20 +6,39 @@ import flapShape from '../../assets/card/flap-shape.svg'
 import leatherTexture from '../../assets/card/leather-texture.png'
 import './WalletCard.css'
 
-const CARD = {
-  balance: '481,296.80',
-  holder: 'Peter AjaNwachuku',
-  number: ['1234', '5678', '9012', '3456'],
-  cvv: '010',
-  expiry: '01/27',
-}
-
 const COLLAPSED_HEIGHT = 255
 const EXPANDED_HEIGHT = 331
 
-export default function WalletCard() {
+// Normalize the card number into groups of 4 whether it's passed as an array
+// (['1234','5678',...]) or a plain string ('1234 5678 9012 3456' / '1234567890123456').
+function toGroups(number) {
+  if (Array.isArray(number)) return number
+  return String(number).replace(/\s+/g, '').match(/.{1,4}/g) ?? [String(number)]
+}
+
+/**
+ * WalletCard — a tap-to-reveal wallet card interaction.
+ *
+ * All content is prop-driven and the look is themeable via CSS variables
+ * (see WalletCard.css / README). Respects `prefers-reduced-motion` and lets
+ * you turn the sound effects off.
+ */
+export default function WalletCard({
+  cardholder = 'Jane Appleseed',
+  balance = '481,296.80',
+  number = ['1234', '5678', '9012', '3456'],
+  cvv = '010',
+  expiry = '01/27',
+  tier = 'Platinum',
+  sound = true,
+  className,
+  style,
+  ...rest
+}) {
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
+
+  const groups = toGroups(number)
 
   const cardRef = useRef(null)
   const flipRef = useRef(null)
@@ -31,21 +50,27 @@ export default function WalletCard() {
   const audioCtxRef = useRef(null)
 
   useLayoutEffect(() => {
+    // Honour reduced-motion: same choreography, but instant.
+    const reduce =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const d = (seconds) => (reduce ? 0 : seconds)
+
     const ctx = gsap.context(() => {
       gsap.set(detailLinesRef.current, { opacity: 0, y: 8 })
       gsap.set(labelHideRef.current, { opacity: 0 })
 
       const tl = gsap.timeline({ paused: true, defaults: { ease: 'power2.inOut' } })
 
-      tl.to(cardRef.current, { height: EXPANDED_HEIGHT, duration: 0.8 }, 0)
-        .to(flipRef.current, { rotateY: 180, duration: 0.9 }, 0)
-        .to(chevronRef.current, { rotate: 180, duration: 0.5 }, 0)
-        .to(labelViewRef.current, { opacity: 0, duration: 0.2 }, 0)
-        .to(labelHideRef.current, { opacity: 1, duration: 0.3 }, 0.25)
+      tl.to(cardRef.current, { height: EXPANDED_HEIGHT, duration: d(0.8) }, 0)
+        .to(flipRef.current, { rotateY: 180, duration: d(0.9) }, 0)
+        .to(chevronRef.current, { rotate: 180, duration: d(0.5) }, 0)
+        .to(labelViewRef.current, { opacity: 0, duration: d(0.2) }, 0)
+        .to(labelHideRef.current, { opacity: 1, duration: d(0.3) }, d(0.25))
         .to(
           detailLinesRef.current,
-          { opacity: 1, y: 0, duration: 0.4, stagger: 0.06, ease: 'power2.out' },
-          0.5,
+          { opacity: 1, y: 0, duration: d(0.4), stagger: d(0.06), ease: 'power2.out' },
+          d(0.5),
         )
 
       timelineRef.current = tl
@@ -55,6 +80,7 @@ export default function WalletCard() {
   }, [])
 
   const playWhoosh = (opening) => {
+    if (!sound) return
     try {
       let ctx = audioCtxRef.current
       if (!ctx) {
@@ -112,6 +138,7 @@ export default function WalletCard() {
   }
 
   const playChing = () => {
+    if (!sound) return
     try {
       let ctx = audioCtxRef.current
       if (!ctx) {
@@ -146,7 +173,7 @@ export default function WalletCard() {
   const handleCopy = async (event) => {
     event.stopPropagation()
     try {
-      await navigator.clipboard.writeText(CARD.number.join(''))
+      await navigator.clipboard.writeText(groups.join(''))
     } catch {
       /* clipboard unavailable, still show feedback */
     }
@@ -161,15 +188,22 @@ export default function WalletCard() {
     handleCopy._t = window.setTimeout(() => setCopied(false), 1400)
   }
 
+  const [dollars, cents] = String(balance).split('.')
+
   return (
-    <div className="wallet-card" ref={cardRef} style={{ height: COLLAPSED_HEIGHT }}>
+    <div
+      className={`wallet-card${className ? ` ${className}` : ''}`}
+      ref={cardRef}
+      style={{ height: COLLAPSED_HEIGHT, ...style }}
+      {...rest}
+    >
       <div className="wallet-card__border" />
 
       <div className="wallet-card__face">
         <div className="wallet-card__flip" ref={flipRef}>
           <div className="wallet-card__face-front">
             <img className="wallet-card__visa" src={visaLogo} alt="Visa" />
-            <p className="wallet-card__tier">Platinum</p>
+            <p className="wallet-card__tier">{tier}</p>
           </div>
 
           <div className="wallet-card__face-back">
@@ -181,14 +215,14 @@ export default function WalletCard() {
             <div className="wallet-card__back-content">
               <div className="wallet-card__row" ref={(el) => (detailLinesRef.current[0] = el)}>
                 <p className="wallet-card__label">Cardholder Name</p>
-                <p className="wallet-card__value">{CARD.holder}</p>
+                <p className="wallet-card__value">{cardholder}</p>
               </div>
 
               <div className="wallet-card__row" ref={(el) => (detailLinesRef.current[1] = el)}>
                 <p className="wallet-card__label">Card Number</p>
                 <div className="wallet-card__number-row">
                   <div className="wallet-card__number">
-                    {CARD.number.map((group, i) => (
+                    {groups.map((group, i) => (
                       <span key={i}>{group}</span>
                     ))}
                   </div>
@@ -228,11 +262,11 @@ export default function WalletCard() {
               <div className="wallet-card__meta-row" ref={(el) => (detailLinesRef.current[2] = el)}>
                 <div>
                   <p className="wallet-card__label">CVV/CVC</p>
-                  <p className="wallet-card__value">{CARD.cvv}</p>
+                  <p className="wallet-card__value">{cvv}</p>
                 </div>
                 <div>
                   <p className="wallet-card__label">Expiry Date</p>
-                  <p className="wallet-card__value">{CARD.expiry}</p>
+                  <p className="wallet-card__value">{expiry}</p>
                 </div>
               </div>
             </div>
@@ -252,8 +286,8 @@ export default function WalletCard() {
           <div className="wallet-card__balance">
             <p className="wallet-card__balance-label">Card Balance</p>
             <p className="wallet-card__balance-amount">
-              ${CARD.balance.split('.')[0]}.
-              <span>{CARD.balance.split('.')[1]}</span>
+              ${dollars}
+              {cents != null && <span>.{cents}</span>}
             </p>
           </div>
 
